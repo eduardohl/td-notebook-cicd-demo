@@ -1,9 +1,10 @@
 name: notebook-cicd
 
 # Trunk-based CI/CD for Databricks notebooks via Asset Bundles.
+# Promotion path: dev -> pat (QA gate) -> prod
 #   - PR to main         -> validate only (nothing deployed)
 #   - merge to main      -> auto-deploy + run the DEV target
-#   - manual promote      -> workflow_dispatch picks qa / pat / prod (optionally gated)
+#   - manual promote      -> workflow_dispatch picks pat / prod (optionally gated)
 #   - GitHub release      -> deploy the PROD target
 on:
   pull_request:
@@ -15,8 +16,8 @@ on:
       target:
         description: "Environment to deploy + run"
         type: choice
-        options: [dev, qa, pat, prod]
-        default: qa
+        options: [dev, pat, prod]
+        default: pat
   release:
     types: [published]
 

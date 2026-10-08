@@ -24,13 +24,7 @@ targets:
       env: dev
       catalog: dev_catalog
 
-  qa:
-    workspace:
-      root_path: /Workspace/Users/${workspace.current_user.userName}/.cicd-demo/qa
-    variables:
-      env: qa
-      catalog: qa_catalog
-
+  # PAT is the single QA / platform-validation gate between dev and prod.
   pat:
     workspace:
       root_path: /Workspace/Users/${workspace.current_user.userName}/.cicd-demo/pat
