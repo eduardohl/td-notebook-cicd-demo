@@ -29,7 +29,7 @@ env:
 jobs:
   validate:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@main
@@ -38,7 +38,7 @@ jobs:
 
   deploy-dev:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@main
@@ -49,7 +49,7 @@ jobs:
 
   promote:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: ${{ inputs.target }}   # ties the run to a GitHub Environment (approval gate lives here)
     steps:
       - uses: actions/checkout@v4
@@ -61,7 +61,7 @@ jobs:
 
   deploy-prod:
     if: github.event_name == 'release'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: prod
     steps:
       - uses: actions/checkout@v4
