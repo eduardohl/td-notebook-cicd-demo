@@ -1,0 +1,46 @@
+bundle:
+  name: td-notebook-cicd-demo
+
+include:
+  - resources/*.yml
+
+# One artifact, four logical "environments". In this demo they all live in a
+# SINGLE workspace and are separated by workspace path (root_path) + catalog var.
+# In real life each target would point to a different workspace/profile.
+variables:
+  env:
+    default: dev
+  catalog:
+    default: dev_catalog
+  schema:
+    default: ingestion
+
+targets:
+  dev:
+    default: true
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.cicd-demo/dev
+    variables:
+      env: dev
+      catalog: dev_catalog
+
+  qa:
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.cicd-demo/qa
+    variables:
+      env: qa
+      catalog: qa_catalog
+
+  pat:
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.cicd-demo/pat
+    variables:
+      env: pat
+      catalog: pat_catalog
+
+  prod:
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.cicd-demo/prod
+    variables:
+      env: prod
+      catalog: cz_prod_catalog

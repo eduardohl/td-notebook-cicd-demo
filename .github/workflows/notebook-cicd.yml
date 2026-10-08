@@ -1,0 +1,71 @@
+name: notebook-cicd
+
+# Trunk-based CI/CD for Databricks notebooks via Asset Bundles.
+#   - PR to main         -> validate only (nothing deployed)
+#   - merge to main      -> auto-deploy + run the DEV target
+#   - manual promote      -> workflow_dispatch picks qa / pat / prod (optionally gated)
+#   - GitHub release      -> deploy the PROD target
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Environment to deploy + run"
+        type: choice
+        options: [dev, qa, pat, prod]
+        default: qa
+  release:
+    types: [published]
+
+# Auth for the Databricks CLI comes from repo secrets.
+env:
+  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Validate bundle
+        run: databricks bundle validate -t dev
+
+  deploy-dev:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Deploy to DEV
+        run: databricks bundle deploy -t dev
+      - name: Smoke-run in DEV
+        run: databricks bundle run silly_demo -t dev
+
+  promote:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}   # ties the run to a GitHub Environment (approval gate lives here)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Deploy to ${{ inputs.target }}
+        run: databricks bundle deploy -t ${{ inputs.target }}
+      - name: Run in ${{ inputs.target }}
+        run: databricks bundle run silly_demo -t ${{ inputs.target }}
+
+  deploy-prod:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Deploy to PROD
+        run: databricks bundle deploy -t prod
+      - name: Run in PROD
+        run: databricks bundle run silly_demo -t prod

@@ -1,0 +1,13 @@
+resources:
+  jobs:
+    silly_demo:
+      name: "silly-cicd-demo-${var.env}"
+      # No cluster specified -> runs on serverless compute.
+      tasks:
+        - task_key: say_hello
+          notebook_task:
+            notebook_path: ../src/notebooks/hello.py
+            base_parameters:
+              env: ${var.env}
+              catalog: ${var.catalog}
+              schema: ${var.schema}
