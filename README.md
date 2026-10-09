@@ -27,7 +27,7 @@ src/notebooks/hello.py              # the "silly" notebook
 |---|---|
 | PR to `main` | `bundle validate` only (nothing deployed) |
 | Merge to `main` | Auto deploy + smoke-run the **dev** target |
-| Manual `workflow_dispatch` | Pick `qa` / `pat` / `prod` to promote the same commit |
+| Manual `workflow_dispatch` | Pick `pat` / `prod` to promote the same commit |
 | GitHub Release published | Deploy the **prod** target |
 
 Short-lived feature branches off `main`, PR, merge, delete. `main` is always
@@ -36,16 +36,31 @@ branches.
 
 ## Secrets required (repo settings)
 
-- `DATABRICKS_HOST` — workspace URL, e.g. `https://xxx.cloud.databricks.com`
-- `DATABRICKS_TOKEN` — a Databricks PAT
+CI authenticates as an OAuth service principal (Databricks-recommended for CI/CD):
+
+- `DATABRICKS_HOST`: workspace URL, e.g. `https://xxx.cloud.databricks.com`
+- `DATABRICKS_CLIENT_ID`: service principal application ID
+- `DATABRICKS_CLIENT_SECRET`: service principal OAuth secret
+
+The service principal needs workspace access, and `run_as` on the pat/prod
+targets points at it so staging and prod jobs run as the SP, not a person.
+
+## Best practices applied
+
+- Deployment modes: `development` on dev, `production` on pat/prod.
+- `run_as` a service principal on pat/prod.
+- `databricks/setup-cli` pinned to a release, not `@main`.
+- `bundle validate --strict` on every PR.
+- Concurrency control so deploys to the same ref don't overlap.
+- Required-reviewer approval on the prod environment.
 
 ## Run it locally
 
 ```bash
-databricks bundle validate -t dev   --profile <profile>
-databricks bundle deploy   -t dev   --profile <profile>
-databricks bundle run      silly_demo -t dev --profile <profile>
+databricks bundle validate --strict -t dev --profile <profile>
+databricks bundle deploy -t dev --profile <profile>
+databricks bundle run silly_demo -t dev --profile <profile>
 # promote the same artifact
-databricks bundle deploy   -t qa    --profile <profile>
-databricks bundle run      silly_demo -t qa --profile <profile>
+databricks bundle deploy -t pat --profile <profile>
+databricks bundle run silly_demo -t pat --profile <profile>
 ```
