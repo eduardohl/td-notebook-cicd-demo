@@ -21,7 +21,14 @@ on:
   release:
     types: [published]
 
+# Never let two deploys to the same ref overlap.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 # Auth for the Databricks CLI comes from repo secrets.
+# Best practice for staging/prod is an OAuth service principal (see README);
+# this demo uses a token for simplicity.
 env:
   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
@@ -32,16 +39,16 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@main
+      - uses: databricks/setup-cli@v1.20.0
       - name: Validate bundle
-        run: databricks bundle validate -t dev
+        run: databricks bundle validate --strict -t dev
 
   deploy-dev:
     if: github.event_name == 'push'
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@main
+      - uses: databricks/setup-cli@v1.20.0
       - name: Deploy to DEV
         run: databricks bundle deploy -t dev
       - name: Smoke-run in DEV
@@ -53,7 +60,7 @@ jobs:
     environment: ${{ inputs.target }}   # ties the run to a GitHub Environment (approval gate lives here)
     steps:
       - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@main
+      - uses: databricks/setup-cli@v1.20.0
       - name: Deploy to ${{ inputs.target }}
         run: databricks bundle deploy -t ${{ inputs.target }}
       - name: Run in ${{ inputs.target }}
@@ -65,7 +72,7 @@ jobs:
     environment: prod
     steps:
       - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@main
+      - uses: databricks/setup-cli@v1.20.0
       - name: Deploy to PROD
         run: databricks bundle deploy -t prod
       - name: Run in PROD
