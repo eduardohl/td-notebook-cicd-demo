@@ -16,7 +16,7 @@ env = dbutils.widgets.get("env")
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
 
-print(f"Hello from the {env.upper()} environment!")
+print(f"Greeting from the {env.upper()} environment!")
 print(f"If this were real, I would write to {catalog}.{schema}")
 
 # COMMAND ----------
