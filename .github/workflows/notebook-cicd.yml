@@ -1,30 +1,19 @@
 name: notebook-cicd
 
 # Trunk-based CI/CD for Databricks notebooks via Asset Bundles.
-# Promotion path: dev -> pat (QA gate) -> prod
-#   - PR to main         -> validate only (nothing deployed)
-#   - merge to main      -> auto-deploy + run the DEV target
-#   - manual promote      -> workflow_dispatch picks pat / prod (optionally gated)
-#   - GitHub release      -> deploy the PROD target
+# Promotion path: dev -> pat (QA gate) -> prod, in ONE run for ONE commit.
+#   - PR to main     -> validate only (nothing deployed)
+#   - merge to main  -> deploy dev -> PAT approval -> deploy pat
+#                       -> prod approval -> deploy prod
+# Each stage `needs` the one before it, so no environment can be skipped, and
+# only main can deploy (checked here, by the GitHub environment branch policy,
+# and by git.branch on the pat/prod bundle targets).
 on:
   pull_request:
     branches: [main]
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      target:
-        description: "Environment to deploy + run"
-        type: choice
-        options: [dev, pat, prod]
-        default: pat
-  release:
-    types: [published]
-
-# Never let two deploys to the same ref overlap.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  workflow_dispatch: # re-run the full chain for the current main
 
 # Auth for the Databricks CLI comes from repo secrets.
 # OAuth M2M as a service principal (Databricks-recommended for CI/CD): the CLI
@@ -45,8 +34,11 @@ jobs:
         run: databricks bundle validate --strict -t dev
 
   deploy-dev:
-    if: github.event_name == 'push'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: self-hosted
+    concurrency: # never let two deploys to the same environment overlap
+      group: deploy-dev
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@v1.20.0
@@ -55,22 +47,28 @@ jobs:
       - name: Smoke-run in DEV
         run: databricks bundle run silly_demo -t dev
 
-  promote:
-    if: github.event_name == 'workflow_dispatch'
+  deploy-pat:
+    needs: deploy-dev
     runs-on: self-hosted
-    environment: ${{ inputs.target }}   # ties the run to a GitHub Environment (approval gate lives here)
+    environment: pat # QA sign-off: required reviewer on the GitHub environment
+    concurrency:
+      group: deploy-pat
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@v1.20.0
-      - name: Deploy to ${{ inputs.target }}
-        run: databricks bundle deploy -t ${{ inputs.target }}
-      - name: Run in ${{ inputs.target }}
-        run: databricks bundle run silly_demo -t ${{ inputs.target }}
+      - name: Deploy to PAT
+        run: databricks bundle deploy -t pat
+      - name: Run in PAT
+        run: databricks bundle run silly_demo -t pat
 
   deploy-prod:
-    if: github.event_name == 'release'
+    needs: deploy-pat
     runs-on: self-hosted
-    environment: prod
+    environment: prod # release approval: required reviewer on the GitHub environment
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@v1.20.0

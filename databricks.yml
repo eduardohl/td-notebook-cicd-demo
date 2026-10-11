@@ -32,6 +32,8 @@ targets:
   # Staging/prod run as a service principal (Databricks best practice), not a user.
   pat:
     mode: production
+    git:
+      branch: main   # production mode refuses to deploy from any other branch
     run_as:
       service_principal_name: ${var.ci_service_principal}
     workspace:
@@ -42,6 +44,8 @@ targets:
 
   prod:
     mode: production
+    git:
+      branch: main   # production mode refuses to deploy from any other branch
     run_as:
       service_principal_name: ${var.ci_service_principal}
     workspace:
