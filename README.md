@@ -39,6 +39,31 @@ Short-lived feature branches off `main`, PR, merge, delete. `main` is always
 releasable. Promotion moves one artifact forward; it does not move code between
 branches.
 
+## Developing in a Git folder
+
+Developers work inside the Databricks workspace in a Git folder. The pipeline
+deploys; the Git folder is only where the change is written. This follows the
+[Git folders user flow](https://learn.microsoft.com/en-us/azure/databricks/repos/ci-cd)
+and the [bundles-in-the-workspace guidance](https://learn.microsoft.com/en-us/azure/databricks/dev-tools/bundles/workspace).
+
+1. Link GitHub once: User Settings > Linked accounts (Git integration) > GitHub.
+2. Clone this repo into your user folder as a Git folder
+   (Workspace > Create > Git folder, or
+   `databricks repos create https://github.com/<owner>/td-notebook-cicd-demo.git gitHub --path /Workspace/Users/<you>/td-notebook-cicd-demo`).
+3. In the Git folder dialog, create your own branch from `main`.
+4. Edit `src/notebooks/hello.py` and run it interactively. The widgets default
+   to the dev values, so it runs as-is.
+5. Optional: Databricks recognizes the folder as a bundle because
+   `databricks.yml` is at the root. From the bundle panel you can deploy your
+   personal **dev** copy (dev mode prefixes it with your name). Leave pat and
+   prod to the pipeline.
+6. Commit and push from the Git folder dialog. Pull and push are always manual;
+   nothing syncs to GitHub on its own.
+7. Open a pull request to `main` on GitHub. From here the pipeline takes over.
+
+Git folders are only used for development. PAT and prod are deployed by the
+pipeline from `main`, never from a Git folder.
+
 ## Secrets required (repo settings)
 
 CI authenticates as an OAuth service principal (Databricks-recommended for CI/CD):
