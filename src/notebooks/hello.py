@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Silly CI/CD Demo Notebook
 # MAGIC
-# MAGIC This same notebook is promoted `dev -> qa -> pat -> prod` by GitHub Actions.
+# MAGIC This same notebook is promoted `dev -> engineering -> prod` by GitHub Actions.
 # MAGIC The **code never changes** between environments. Only the bundle *target*
 # MAGIC (workspace path + catalog/schema) changes, injected as job parameters.
 

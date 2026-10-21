@@ -2,6 +2,10 @@ resources:
   jobs:
     silly_demo:
       name: "silly-cicd-demo-${var.env}"
+      # Traceability: every deployed job says which commit and which pipeline run put it there.
+      tags:
+        git_sha: ${var.git_sha}
+        release_id: ${var.release_id}
       # No cluster specified -> runs on serverless compute.
       tasks:
         - task_key: say_hello

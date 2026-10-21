@@ -4,9 +4,14 @@ bundle:
 include:
   - resources/*.yml
 
-# One artifact, four logical "environments". In this demo they all live in a
-# SINGLE workspace and are separated by workspace path (root_path) + catalog var.
-# In real life each target would point to a different workspace/profile.
+# One commit, three environments: dev -> engineering -> prod.
+# In this demo they all live in a SINGLE workspace and are separated by
+# workspace path (root_path), catalog variable, and deploying identity.
+# In real life each target points at its own workspace.
+#
+# Each environment has its own service principal. The pipeline signs in as that
+# environment's identity, so root_path below resolves to that identity's home
+# folder and the jobs run as it. The dev identity cannot write to prod.
 variables:
   env:
     default: dev
@@ -14,9 +19,12 @@ variables:
     default: dev_catalog
   schema:
     default: ingestion
-  ci_service_principal:
-    description: Application ID of the CI/CD service principal (run_as for staging/prod)
-    default: e57a6eef-b4cd-49d2-b06a-35d22ac5c305
+  git_sha:
+    description: Commit being deployed, recorded as a job tag
+    default: local
+  release_id:
+    description: Pipeline run that deployed it (stand-in for the change order / Nexus hash)
+    default: local
 
 targets:
   dev:
@@ -28,26 +36,37 @@ targets:
       env: dev
       catalog: dev_catalog
 
-  # PAT is the single QA / platform-validation gate between dev and prod.
-  # Staging/prod run as a service principal (Databricks best practice), not a user.
-  pat:
+  # Engineering workspace: validation on real (governed) data, after lead approval.
+  engineering:
     mode: production
     git:
       branch: main   # production mode refuses to deploy from any other branch
     run_as:
-      service_principal_name: ${var.ci_service_principal}
+      service_principal_name: 5af5e7a0-438e-4b1d-867e-6af91bb27207   # cicd-demo-engineering-sp
+    # People can view what's deployed; only the environment's identity can change it.
+    permissions:
+      - level: CAN_MANAGE
+        service_principal_name: 5af5e7a0-438e-4b1d-867e-6af91bb27207
+      - level: CAN_VIEW
+        group_name: users
     workspace:
-      root_path: /Workspace/Users/${workspace.current_user.userName}/.cicd-demo/pat
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.cicd-demo/engineering
     variables:
-      env: pat
-      catalog: pat_catalog
+      env: engineering
+      catalog: engineering_catalog
 
+  # Production: after change-order approval.
   prod:
     mode: production
     git:
-      branch: main   # production mode refuses to deploy from any other branch
+      branch: main
     run_as:
-      service_principal_name: ${var.ci_service_principal}
+      service_principal_name: 01e48edb-0d58-4e3b-ae2d-0c9bc1cfd98b   # cicd-demo-prod-sp
+    permissions:
+      - level: CAN_MANAGE
+        service_principal_name: 01e48edb-0d58-4e3b-ae2d-0c9bc1cfd98b
+      - level: CAN_VIEW
+        group_name: users
     workspace:
       root_path: /Workspace/Users/${workspace.current_user.userName}/.cicd-demo/prod
     variables:
