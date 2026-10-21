@@ -11,15 +11,20 @@ name: notebook-cicd
 # and by git.branch on the engineering/prod bundle targets).
 #
 # Identity per environment: each job reads DATABRICKS_CLIENT_ID/SECRET from its
-# own GitHub environment. The prod credentials are only released to the
-# deploy-prod job, and only after the prod approval. There are no repo-level
-# Databricks secrets.
+# own GitHub environment, and only the Databricks CLI steps see them. GitHub
+# releases the prod credentials only to a job on main that passed the prod
+# approval. There are no repo-level Databricks secrets. Actions are pinned to
+# commit SHAs.
 on:
   pull_request:
     branches: [main]
   push:
     branches: [main]
   workflow_dispatch: # re-run the full chain for the current main
+
+# Least privilege for the GitHub token in every job.
+permissions:
+  contents: read
 
 env:
   DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
@@ -31,65 +36,83 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: self-hosted
     environment: dev # low-privilege dev identity, usable by PR checks
-    env:
-      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@v1.20.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: databricks/setup-cli@9b64c94a6d2b2e830592d80e9f14c26d32b42ad7 # v1.20.0
       - name: Validate bundle
         run: databricks bundle validate --strict -t dev
+        env:
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
 
   deploy-dev:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: self-hosted
     environment: dev
-    env:
-      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
     concurrency: # never let two deploys to the same environment overlap
       group: deploy-dev
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@v1.20.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: databricks/setup-cli@9b64c94a6d2b2e830592d80e9f14c26d32b42ad7 # v1.20.0
       - name: Deploy to DEV
         run: databricks bundle deploy -t dev $DEPLOY_VARS
+        env:
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
       - name: Smoke-run in DEV
         run: databricks bundle run silly_demo -t dev $DEPLOY_VARS
+        env:
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
 
   deploy-engineering:
     needs: deploy-dev
     runs-on: self-hosted
     environment: engineering # lead approval: required reviewer on the GitHub environment
-    env:
-      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
     concurrency:
       group: deploy-engineering
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@v1.20.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: databricks/setup-cli@9b64c94a6d2b2e830592d80e9f14c26d32b42ad7 # v1.20.0
       - name: Deploy to ENGINEERING
         run: databricks bundle deploy -t engineering $DEPLOY_VARS
+        env:
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
       - name: Validate in ENGINEERING
         run: databricks bundle run silly_demo -t engineering $DEPLOY_VARS
+        env:
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
 
   deploy-prod:
     needs: deploy-engineering
     runs-on: self-hosted
     environment: prod # change-order approval: required reviewer on the GitHub environment
-    env:
-      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
     concurrency:
       group: deploy-prod
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: databricks/setup-cli@v1.20.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: databricks/setup-cli@9b64c94a6d2b2e830592d80e9f14c26d32b42ad7 # v1.20.0
       - name: Deploy to PROD
         run: databricks bundle deploy -t prod $DEPLOY_VARS
-      - name: Run in PROD
+        env:
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      # Demo only. A real release deploys and runs a side-effect-free check, not the workload.
+      - name: Run in PROD (demo only)
         run: databricks bundle run silly_demo -t prod $DEPLOY_VARS
+        env:
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}

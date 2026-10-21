@@ -95,8 +95,8 @@ environment.
 
 - Deployment modes: `development` on dev, `production` on engineering/prod.
 - A separate service principal per environment; engineering/prod jobs `run_as` it.
-- People get view-only permissions on engineering/prod jobs.
-- `databricks/setup-cli` pinned to a release, not `@main`.
+- Engineering/prod jobs are view-only for people (the demo uses `users`; a real setup uses named operator and support groups).
+- Actions pinned to commit SHAs, `permissions: contents: read`, and Databricks credentials only on the CLI steps.
 - `bundle validate --strict` on every PR.
 - Concurrency control so two deploys to the same environment don't overlap.
 - Required-reviewer approval on the engineering (lead) and prod (change order) environments.

@@ -43,7 +43,8 @@ targets:
       branch: main   # production mode refuses to deploy from any other branch
     run_as:
       service_principal_name: 5af5e7a0-438e-4b1d-867e-6af91bb27207   # cicd-demo-engineering-sp
-    # People can view what's deployed; only the environment's identity can change it.
+    # Only the environment's identity can change what's deployed. "users" stands in
+    # for named operator and support groups in a real setup.
     permissions:
       - level: CAN_MANAGE
         service_principal_name: 5af5e7a0-438e-4b1d-867e-6af91bb27207
